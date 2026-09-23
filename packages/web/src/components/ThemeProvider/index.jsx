@@ -1,5 +1,9 @@
 import PropTypes from 'prop-types';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 import { ThemeProvider as BaseThemeProvider } from '@mui/material/styles';
 import clone from 'lodash/clone';
 import set from 'lodash/set';
@@ -53,10 +57,19 @@ const customizeTheme = (theme, config) => {
 };
 
 const ThemeProvider = ({ children, ...props }) => {
-  const { data: automatischInfo, isPending: isAutomatischInfoPending } =
-    useAutomatischInfo();
-  const isMation = automatischInfo?.data.isMation;
-  const { data: configData, isLoading: configLoading } = useAutomatischConfig();
+  const {
+    data: automatischInfo,
+    isPending: isAutomatischInfoPending,
+    isError: infoError,
+    refetch: refetchInfo,
+  } = useAutomatischInfo();
+  const isMation = automatischInfo?.data?.isMation;
+  const {
+    data: configData,
+    isLoading: configLoading,
+    isError: configError,
+    refetch: refetchConfig,
+  } = useAutomatischConfig();
   const config = configData?.data;
 
   const customTheme = React.useMemo(() => {
@@ -69,14 +82,59 @@ const ThemeProvider = ({ children, ...props }) => {
     return customTheme;
   }, [configLoading, config, isMation, isAutomatischInfoPending]);
 
-  // TODO: maybe a global loading state for the custom theme?
-  if (isAutomatischInfoPending || configLoading) return <></>;
+  if (isAutomatischInfoPending || configLoading) {
+    return (
+      <BaseThemeProvider theme={customTheme} {...props}>
+        <CssBaseline />
+        <Box
+          component="main"
+          role="status"
+          aria-label="Connecting to Automatisch"
+          sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <CircularProgress aria-hidden="true" />
+        </Box>
+      </BaseThemeProvider>
+    );
+  }
 
   return (
     <BaseThemeProvider theme={customTheme} {...props}>
       <CssBaseline />
-
-      {children}
+      {infoError || configError ? (
+        <Box
+          component="main"
+          role="alert"
+          sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            p: 3,
+            textAlign: 'center',
+          }}
+        >
+          <Typography component="h1" variant="h5">
+            Unable to connect to Automatisch
+          </Typography>
+          <Typography color="text.secondary" sx={{ maxWidth: 480 }}>
+            The application server is unavailable. Start the backend and try again.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (infoError) refetchInfo();
+              if (configError) refetchConfig();
+            }}
+          >
+            Try again
+          </Button>
+        </Box>
+      ) : (
+        children
+      )}
     </BaseThemeProvider>
   );
 };

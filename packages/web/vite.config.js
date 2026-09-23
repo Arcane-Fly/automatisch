@@ -13,6 +13,18 @@ export default defineConfig(() => {
       outDir: 'build',
     },
     plugins: [
+      {
+        name: 'unavailable-api-response',
+        configureServer(server) {
+          server.middlewares.use('/internal/api', (_request, response) => {
+            response.writeHead(503, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Cache-Control': 'no-store',
+            });
+            response.end(JSON.stringify({ message: 'The API is not running.' }));
+          });
+        },
+      },
       react({
         jsxImportSource: '@emotion/react',
         babel: {
@@ -49,7 +61,7 @@ export default defineConfig(() => {
       },
     },
     server: {
-      open: true,
+      open: false,
       port: process.env.PORT || 3001,
     },
   };
